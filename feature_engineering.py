@@ -15,8 +15,12 @@ dtypes = {
         'click_id'      : 'uint32'
         }
 
-train=pd.read_csv('../talkingdata_data/train.csv',dtype=dtypes,skiprows=124903890, nrows=100000,names=['ip','app','device','os','channel','click_time','attributed_time','is_attributed'])
-test=pd.read_csv('../talkingdata_data/test.csv',dtype=dtypes,nrows=1000)
+train=pd.read_csv('../talkingdata_data/train.csv',dtype=dtypes,skiprows=104903890, nrows=80000000, 
+               names =["ip", "app", "device", "os", "channel", "click_time", 
+                            "attributed_time", "is_attributed"])
+test=pd.read_csv('../talkingdata_data/test.csv',dtype=dtypes)
+test_size=test.shape[0]
+
 train.drop('attributed_time',axis=1,inplace=True)
 all_df=pd.concat([train,test.drop('click_id',axis=1)])
 all_df.fillna(0,inplace=True)
@@ -32,35 +36,47 @@ print ('adding time features')
 all_df=add_time_features(all_df)
 
 
-def add_expanding_freq_mean(df,features):
+def add_expanding_freq_mean(df,features, threshold=0.05):
     print ('adding frequency encoding for ',' '.join(features))
     cumcnt=df.groupby(features).cumcount()
     freq_col='_'.join(features)+'_freq_enc'
-    freq_corr=np.corrcoef(df['is_attributed'].values, 
-                       cumcnt.values)[0][1]
-    print ('frequency encoding correlation with target is :', freq_corr)
-    if abs(freq_corr)>0.005:
-        df[freq_col]=cumcnt
-    else: print ('correlation too low')
+    df[freq_col]=cumcnt.astype('uint16')
+    freq_corr=np.corrcoef(df.iloc[:-test_size]['is_attributed'].values, 
+                       df.iloc[:-test_size][freq_col].values)[0][1]
+    print ('frequency encoding information value is :', freq_corr)
+    if freq_corr<threshold:
+        df.drop(freq_col,inplace=True)
+        print ('correlation with target too low, dropped feature')
         
     print ('adding mean encoding for ',' '.join(features))
     cumsum=df.groupby(features).is_attributed.cumsum()-df.is_attributed
     col_name='_'.join(features)+'_mean_enc'
-    df[col_name]=cumsum/(cumcnt+1)
-    mean_corr=np.corrcoef(df['is_attributed'].values, 
-                       df[col_name].values)[0][1]
+    df[col_name]=(cumsum/(cumcnt+1)).astype('float16')
+    mean_corr=np.corrcoef(df.iloc[:-test_size]['is_attributed'].values, 
+                       df.iloc[:-test_size][col_name].values)[0][1]
     print ('mean encoding correlation with target is :', mean_corr)
 
-    if abs(mean_corr)<0.005: 
+    if abs(mean_corr)<threshold: 
         print ('correlation with target too low, dropped feature')
         df.drop(col_name, inplace=True)  
     return df,freq_corr,mean_corr 
 correlations_dict=dict()
 columns=['app', 'channel', 'device', 'ip','os', 'click_time_day', 'click_time_hour']
+
+for col in columns:
+    print (col, "correlation", np.corrcoef(all_df.iloc[:-test_size]['is_attributed'].values, all_df.iloc[:-test_size][col].values)[0][1])
 encoding_feats=sum([list(itertools.combinations(columns,i)) for i in range(1,4)],[])
 print ('start calculating freqency encoding and mean encodings')
 for features in encoding_feats:
     all_df,freq_corr,mean_corr=add_expanding_freq_mean(all_df,list(features))
-    correlations_dict[features]={'freq_corr':freq_corr,'mean_corr':mean_corr}
-cPickle.dump(correlations_dict,open("../talkingdata_data/correlations_dict.pkl","wb"))
+    gc.collect();
+
+
+print ('dumping dataframe to disk')
 cPickle.dump(all_df,open("../talkingdata_data/all_df.pkl","wb"))
+gc.collect();
+
+print ('create test dataframe')
+test_all_df=all_df.iloc[-test_size-5000:-test_size+1000]
+cPickle.dump(test_all_df,open("../talkingdata_data/test_all_df.pkl","wb"))
+gc.collect();
