@@ -14,11 +14,15 @@ dtypes = {
         'is_attributed' : 'uint8',
         'click_id'      : 'uint32'
         }
-#skiprows=104903890,
-train=pd.read_csv('../talkingdata_data/train.csv',dtype=dtypes,skiprows=84903890, nrows=100000000, 
+
+train=pd.read_csv('../talkingdata_data/train.csv',dtype=dtypes,skiprows=104903890, nrows=80000000, 
                names =["ip", "app", "device", "os", "channel", "click_time", 
                             "attributed_time", "is_attributed"])
 test=pd.read_csv('../talkingdata_data/test.csv',dtype=dtypes)
+'''
+train=pd.read_csv('../talkingdata_data/train.csv',dtype=dtypes,nrows=10000)
+test=pd.read_csv('../talkingdata_data/test.csv',dtype=dtypes,nrows=1000)
+'''
 test_size=test.shape[0]
 train.drop('attributed_time',axis=1,inplace=True)
 
@@ -42,19 +46,19 @@ print ('start calculating stats')
 for each feature set , calculate 6 features 
 1. total conversion rate 
 2. max(daily click rate) 
-3. ave(daily click rate)
 4. max(hourly click rate)
 5. ave(hourly click rate)
 6. std(hourly click rate) 
 '''
 def get_feats_df(feats):
     name_prefix='_'.join(feats)
-    conversion_df=train.groupby(feats).is_attributed.agg([(name_prefix+'_conversion_rate',lambda x:100*x.sum()/x.count())]).astype('float16')
-    
+    conversion_df=train.groupby(feats).is_attributed.agg([(name_prefix+'_conversion_rate',lambda x:100*x.sum()/x.count())]).astype('float32')
     daily_df=train.groupby(feats+['click_time_day']).is_attributed.count().reset_index()
-    daily_df=daily_df.groupby(feats).is_attributed.agg([(name_prefix+'_daily_max','max'),(name_prefix+'_daily_mean','mean')]).astype('float16')
+    #daily_df=daily_df.groupby(feats).is_attributed.agg([(name_prefix+'_daily_max','max'),(name_prefix+'_daily_mean','mean')]).astype('float32')
+    daily_df=daily_df.groupby(feats).is_attributed.agg([(name_prefix+'_daily_max','max')]).astype('float32')
     hourly_df=train.groupby(feats+['click_time_day','click_time_hour']).is_attributed.count().reset_index()
-    hourly_df=hourly_df.groupby(feats).is_attributed.agg([(name_prefix+'_hourly_max','max'),(name_prefix+'_hourly_mean','mean'),(name_prefix+'_hourly_std','std')]).astype('float16')
+    #hourly_df=hourly_df.groupby(feats).is_attributed.agg([(name_prefix+'_hourly_max','max'),(name_prefix+'_hourly_mean','mean'),(name_prefix+'_hourly_std','std')]).astype('float32')
+    hourly_df=hourly_df.groupby(feats).is_attributed.agg([(name_prefix+'_hourly_std','std')]).astype('float32')
     feats_df=pd.concat([conversion_df,daily_df,hourly_df],axis=1).fillna(0)
     return feats_df  
 
@@ -67,7 +71,9 @@ for feats in encoding_feats:
     #print (feats_df.index.names)
     train=train.merge(feats_df,how='left',left_on=feats,right_index=True)
     val=val.merge(feats_df,how='left',left_on=feats,right_index=True)
+    val.fillna(val.median(),inplace=True)
     test=test.merge(feats_df,how='left',left_on=feats,right_index=True)
+    test.fillna(test.median(),inplace=True)
     gc.collect();
 print ('train shape',train.shape)
 print ('val shape', val.shape)

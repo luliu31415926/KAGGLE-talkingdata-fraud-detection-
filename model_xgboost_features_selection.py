@@ -15,13 +15,15 @@ def go(data_dict,feats_to_use, params):
     else:
         xgb = XGBRegressor(seed=0, silent=False, n_jobs=-1)
     '''
-    X_train=data_dict['X_train'][feats_to_use].copy()
-    y_train=data_dict['y_train'].copy()
+    X_train=data_dict.iloc[:30000000]['X_train'][feats_to_use].copy()
+    y_train=data_dict.iloc[:30000000]['y_train'].copy()
     X_test=data_dict['X_test'][feats_to_use].copy()
     X_val=data_dict['X_val'][feats_to_use].copy()
     y_val=data_dict['y_val'].copy()
 
-    
+    del data_dict
+    gc.collect() ;
+
     xgb=XGBRegressor(**params)
     print (xgb)
 
@@ -33,8 +35,8 @@ def go(data_dict,feats_to_use, params):
     print (elapsed)
     get_feature_importances(feats_to_use,xgb)
 
-    data_dict['X_test']['is_attributed']=xgb.predict(X_test)
-    submission=data_dict['X_test'][['click_id','is_attributed']]
+    submission=pd.read_csv('../talkingdata_data/sample_submission.csv')
+    submission.is_attributed=xgb.predict(X_test)
     return submission, xgb
 def get_feature_importances(feats_to_use, xgb):
     feature_importances=list(zip(feats_to_use,xgb.feature_importances_))
@@ -65,6 +67,4 @@ if __name__ == "__main__":
     }
     submission,xgb=go(data_dict, feats_to_use,params)
     submission.to_csv('submission_xgb_%s.csv'%time.strftime("%Y%m%d-%H%M%S"),index=False)
-    with open('xgb.pkl','wb') as handle:
-        cPickle.dump(xgb,handle,protocol=-1)
     
