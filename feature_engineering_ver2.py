@@ -87,7 +87,6 @@ del train,val,test
 gc.collect();
 
 print ('dumping dataframe to disk')
-cPickle.dump(data_dict,open("../talkingdata_data/data_dict.pkl","wb"))
-cPickle.dump(test_data_dict,open("../talkingdata_data/test_data_dict.pkl","wb"))
-
+cPickle.dump(test_data_dict,open("../talkingdata_data/test_data_dict.pkl","wb"),protocol=-1)
+cPickle.dump(data_dict,open("../talkingdata_data/data_dict.pkl","wb"),protocol=-1)
 gc.collect();

@@ -1,6 +1,5 @@
 import pandas as pd 
 import numpy as np
-import split_data
 import time 
 from xgboost.sklearn import XGBRegressor
 from sklearn.model_selection import GridSearchCV,PredefinedSplit, KFold, cross_val_score
@@ -43,15 +42,16 @@ def get_feature_importances(feats_to_use, xgb):
         cPickle.dump(feature_importances,handle) 
         
 if __name__ == "__main__":
+    '''
     with open('../talkingdata_data/test_data_dict.pkl','rb') as handle:
         data_dict=cPickle.load(handle)
     '''
     with open('../talkingdata_data/data_dict.pkl','rb') as handle:
-        all_df=cPickle.load(handle)
-    '''
+        data_dict=cPickle.load(handle)
+    
     feats_to_use=features.xgb_features
     # to deal with imalanced data set, calculate scale_pos_weight parameter
-    scale_pos_weight = 100 - ( [data_dict['y_train'].sum() / data_dict['y_train'].size() ] * 100 )
+    scale_pos_weight = 100 - ( data_dict['y_train'].sum() / data_dict['y_train'].size  * 100 )
     print ('scale_pos_weight: ',scale_pos_weight)
     params={"n_jobs":-1,
     "silent":True,
