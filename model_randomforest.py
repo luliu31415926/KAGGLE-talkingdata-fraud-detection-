@@ -14,15 +14,15 @@ def go(data_dict,feats_to_use,params):
 
     start_time=time.time()
     rfr=RandomForestClassifier(**params)
+    print (rfr) 
     rfr.fit(X_train,y_train)
     elapsed=time.time()-start_time
     print ('elapsed: ',elapsed)
-    data_dict['y_pred']=rfr.predict(X_test)
     
     #generate submission
 
     get_feature_importances(feats_to_use,rfr)
-    data_dict['X_test']['is_attributed']=xgb.predict(X_test)
+    data_dict['X_test']['is_attributed']=rfr.predict_proba(X_test)[:,1]
     submission=data_dict['X_test'][['click_id','is_attributed']]
 
     return submission, rfr
@@ -34,22 +34,23 @@ def get_feature_importances(feats_to_use, rfr):
     with open('../talkingdata_data/rfr_feature_importances.pkl','wb')as handle:
         cPickle.dump(feature_importances,handle) 
 if __name__ == "__main__":
+    '''
     with open('../talkingdata_data/test_data_dict.pkl','rb') as handle:
         data_dict=cPickle.load(handle)
     '''
     with open('../talkingdata_data/data_dict.pkl','rb') as handle:
         data_dict=cPickle.load(handle)
-    '''
-    feats_to_use=features.xgb_features
+    
+    feats_to_use=features.rfr_features
     
     params={"n_jobs":-1,
     "n_estimators":100,
     "max_depth":3,
-    "oob_score":True
+    "oob_score":True,
     "class_weight":'balanced'
     }
     submission,rfr=go(data_dict, feats_to_use,params)
-    submission.to_csv('submission_rfr_%s.csv'%time.strftime("%Y%m%d-%H%M%S"),index=False)
+    submission.to_csv('submission_rfr.csv'%time.strftime("%Y%m%d-%H%M%S"),index=False)
     with open('rfr.pkl','wb') as handle:
         cPickle.dump(rfr,handle,protocol=-1)
     
