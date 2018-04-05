@@ -1,11 +1,10 @@
-# hourly count features and yesterday's conversion rate 
+# use test supplement day=10 data 
 import pandas as pd 
 import numpy as np
 import gc 
 import pytz
 import itertools
 import _pickle as cPickle 
-from sklearn.model_selection import  train_test_split
 
 dtypes = {
         'ip'            : 'uint32',
@@ -16,15 +15,15 @@ dtypes = {
         'is_attributed' : 'uint8',
         'click_id'      : 'uint32'
         }
-
+'''
 train=pd.read_csv('../talkingdata_data/train.csv',dtype=dtypes)
 gc.collect();
-test=pd.read_csv('../talkingdata_data/test.csv',dtype=dtypes)
+test=pd.read_csv('../talkingdata_data/test_supplement.csv',dtype=dtypes)
 '''
 train=pd.read_csv('../talkingdata_data/train.csv',dtype=dtypes,nrows=1000)
-test=pd.read_csv('../talkingdata_data/test.csv',dtype=dtypes,nrows=100)
-'''
-test_size=test.shape[0]
+test=pd.read_csv('../talkingdata_data/test_supplement.csv',dtype=dtypes,nrows=100)
+
+test_click_id=test.click_id 
 train.drop('attributed_time',axis=1,inplace=True)
 
 def add_time_features(df):
@@ -37,6 +36,8 @@ def add_time_features(df):
 print ('adding time features')
 train=add_time_features(train)
 test=add_time_features(test)
+test=test[test.click_time_day==10]
+test_size=test.shape[0]
 all_data=pd.concat([train,test.drop('click_id',axis=1)])
 print ('all data',all_data.shape)
 gc.collect();
@@ -71,7 +72,7 @@ data_dict=dict()
 test_data_dict=dict()
 
 data_dict['X_test']=test_df.drop('is_attributed',axis=1)
-data_dict['X_test']['click_id']=test.click_id
+data_dict['X_test']['click_id']=test_click_id
 data_dict['X_train']=train_df.drop('is_attributed',axis=1)
 data_dict['y_train']=train_df.is_attributed
 for key in data_dict.keys():
